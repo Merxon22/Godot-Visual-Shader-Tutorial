@@ -1,0 +1,204 @@
+[gd_resource type="VisualShader" load_steps=9 format=3 uid="uid://d1kkxyckh2eis"]
+
+[ext_resource type="Texture2D" uid="uid://sc51jsca5pbm" path="res://Textures/PerlinNoise.png" id="1_sg3dt"]
+
+[sub_resource type="VisualShaderNodeTexture" id="VisualShaderNodeTexture_3l25f"]
+output_port_for_preview = 0
+texture = ExtResource("1_sg3dt")
+
+[sub_resource type="VisualShaderNodeFloatParameter" id="VisualShaderNodeFloatParameter_bbjc6"]
+parameter_name = "dissolve"
+hint = 1
+
+[sub_resource type="VisualShaderNodeFloatParameter" id="VisualShaderNodeFloatParameter_mv4rt"]
+parameter_name = "scale"
+hint = 2
+min = 1.0
+max = 100.0
+step = 1.0
+default_value_enabled = true
+default_value = 30.0
+
+[sub_resource type="VisualShaderNodeUVFunc" id="VisualShaderNodeUVFunc_r3uh5"]
+output_port_for_preview = 0
+function = 1
+
+[sub_resource type="VisualShaderNodeGlobalExpression" id="VisualShaderNodeGlobalExpression_qa5ug"]
+size = Vector2(1160, 940)
+expression = "vec2 modulo(vec2 divident, vec2 divisor){
+	vec2 positiveDivident = mod(divident, divisor) + divisor;
+	return mod(positiveDivident, divisor);
+}
+
+vec2 random(vec2 value){
+	value = vec2( dot(value, vec2(127.2,311.7) ),
+				  dot(value, vec2(269.5,183.3) ) );
+	return -1.0 + 2.0 * fract(sin(value) * 43758.5453123);
+}
+
+float seamless_noise(vec2 uv, float s) {
+	uv = uv * s;
+	vec2 cellsMinimum = floor(uv);
+	vec2 cellsMaximum = ceil(uv);
+	vec2 uv_fract = fract(uv);
+	
+	cellsMinimum = modulo(cellsMinimum, vec2(s));
+	cellsMaximum = modulo(cellsMaximum, vec2(s));
+	
+	vec2 blur = smoothstep(0.0, 1.0, uv_fract);
+	
+	vec2 lowerLeftDirection = random(vec2(cellsMinimum.x, cellsMinimum.y));
+	vec2 lowerRightDirection = random(vec2(cellsMaximum.x, cellsMinimum.y));
+	vec2 upperLeftDirection = random(vec2(cellsMinimum.x, cellsMaximum.y));
+	vec2 upperRightDirection = random(vec2(cellsMaximum.x, cellsMaximum.y));
+	
+	vec2 fraction = fract(uv);
+	
+	return clamp(mix( mix( dot( lowerLeftDirection, fraction - vec2(0, 0) ),
+                     dot( lowerRightDirection, fraction - vec2(1, 0) ), blur.x),
+                mix( dot( upperLeftDirection, fraction - vec2(0, 1) ),
+                     dot( upperRightDirection, fraction - vec2(1, 1) ), blur.x), blur.y) * 0.8 + 0.5, 0, 1);
+}
+"
+
+[sub_resource type="VisualShaderNodeExpression" id="VisualShaderNodeExpression_w17wd"]
+output_port_for_preview = 0
+size = Vector2(600, 400)
+expression = "noise = seamless_noise(UV, scale);"
+
+[sub_resource type="VisualShaderNodeColorParameter" id="VisualShaderNodeColorParameter_cpnmk"]
+parameter_name = "albedo"
+
+[resource]
+code = "shader_type spatial;
+render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_lambert, specular_schlick_ggx;
+
+uniform vec4 albedo : source_color;
+uniform float scale : hint_range(1, 100, 1) = 30;
+uniform float dissolve : hint_range(0, 1);
+
+
+// GlobalExpression:0
+	vec2 modulo(vec2 divident, vec2 divisor){
+		vec2 positiveDivident = mod(divident, divisor) + divisor;
+		return mod(positiveDivident, divisor);
+	}
+	
+	vec2 random(vec2 value){
+		value = vec2( dot(value, vec2(127.2,311.7) ),
+					  dot(value, vec2(269.5,183.3) ) );
+		return -1.0 + 2.0 * fract(sin(value) * 43758.5453123);
+	}
+	
+	float seamless_noise(vec2 uv, float s) {
+		uv = uv * s;
+		vec2 cellsMinimum = floor(uv);
+		vec2 cellsMaximum = ceil(uv);
+		vec2 uv_fract = fract(uv);
+		
+		cellsMinimum = modulo(cellsMinimum, vec2(s));
+		cellsMaximum = modulo(cellsMaximum, vec2(s));
+		
+		vec2 blur = smoothstep(0.0, 1.0, uv_fract);
+		
+		vec2 lowerLeftDirection = random(vec2(cellsMinimum.x, cellsMinimum.y));
+		vec2 lowerRightDirection = random(vec2(cellsMaximum.x, cellsMinimum.y));
+		vec2 upperLeftDirection = random(vec2(cellsMinimum.x, cellsMaximum.y));
+		vec2 upperRightDirection = random(vec2(cellsMaximum.x, cellsMaximum.y));
+		
+		vec2 fraction = fract(uv);
+		
+		return clamp(mix( mix( dot( lowerLeftDirection, fraction - vec2(0, 0) ),
+	                     dot( lowerRightDirection, fraction - vec2(1, 0) ), blur.x),
+	                mix( dot( upperLeftDirection, fraction - vec2(0, 1) ),
+	                     dot( upperRightDirection, fraction - vec2(1, 1) ), blur.x), blur.y) * 0.8 + 0.5, 0, 1);
+	}
+	
+
+void fragment() {
+// ColorParameter:8
+	vec4 n_out8p0 = albedo;
+
+
+// FloatParameter:4
+	float n_out4p0 = scale;
+
+
+	float n_out7p0;
+// Expression:7
+	n_out7p0 = 0.0;
+	{
+		n_out7p0 = seamless_noise(UV, n_out4p0);
+	}
+
+
+// FloatParameter:3
+	float n_out3p0 = dissolve;
+
+
+// Output:0
+	ALBEDO = vec3(n_out8p0.xyz);
+	ALPHA = n_out7p0;
+	ALPHA_SCISSOR_THRESHOLD = n_out3p0;
+
+
+}
+"
+graph_offset = Vector2(-833.749, -313.69)
+nodes/fragment/2/node = SubResource("VisualShaderNodeTexture_3l25f")
+nodes/fragment/2/position = Vector2(-380, -340)
+nodes/fragment/3/node = SubResource("VisualShaderNodeFloatParameter_bbjc6")
+nodes/fragment/3/position = Vector2(20, 680)
+nodes/fragment/4/node = SubResource("VisualShaderNodeFloatParameter_mv4rt")
+nodes/fragment/4/position = Vector2(-1300, 140)
+nodes/fragment/5/node = SubResource("VisualShaderNodeUVFunc_r3uh5")
+nodes/fragment/5/position = Vector2(-680, -200)
+nodes/fragment/6/node = SubResource("VisualShaderNodeGlobalExpression_qa5ug")
+nodes/fragment/6/position = Vector2(-2360, 520)
+nodes/fragment/6/size = Vector2(1160, 940)
+nodes/fragment/6/input_ports = ""
+nodes/fragment/6/output_ports = ""
+nodes/fragment/6/expression = "vec2 modulo(vec2 divident, vec2 divisor){
+	vec2 positiveDivident = mod(divident, divisor) + divisor;
+	return mod(positiveDivident, divisor);
+}
+
+vec2 random(vec2 value){
+	value = vec2( dot(value, vec2(127.2,311.7) ),
+				  dot(value, vec2(269.5,183.3) ) );
+	return -1.0 + 2.0 * fract(sin(value) * 43758.5453123);
+}
+
+float seamless_noise(vec2 uv, float s) {
+	uv = uv * s;
+	vec2 cellsMinimum = floor(uv);
+	vec2 cellsMaximum = ceil(uv);
+	vec2 uv_fract = fract(uv);
+	
+	cellsMinimum = modulo(cellsMinimum, vec2(s));
+	cellsMaximum = modulo(cellsMaximum, vec2(s));
+	
+	vec2 blur = smoothstep(0.0, 1.0, uv_fract);
+	
+	vec2 lowerLeftDirection = random(vec2(cellsMinimum.x, cellsMinimum.y));
+	vec2 lowerRightDirection = random(vec2(cellsMaximum.x, cellsMinimum.y));
+	vec2 upperLeftDirection = random(vec2(cellsMinimum.x, cellsMaximum.y));
+	vec2 upperRightDirection = random(vec2(cellsMaximum.x, cellsMaximum.y));
+	
+	vec2 fraction = fract(uv);
+	
+	return clamp(mix( mix( dot( lowerLeftDirection, fraction - vec2(0, 0) ),
+                     dot( lowerRightDirection, fraction - vec2(1, 0) ), blur.x),
+                mix( dot( upperLeftDirection, fraction - vec2(0, 1) ),
+                     dot( upperRightDirection, fraction - vec2(1, 1) ), blur.x), blur.y) * 0.8 + 0.5, 0, 1);
+}
+"
+nodes/fragment/7/node = SubResource("VisualShaderNodeExpression_w17wd")
+nodes/fragment/7/position = Vector2(-700, 240)
+nodes/fragment/7/size = Vector2(600, 400)
+nodes/fragment/7/input_ports = "0,0,scale;"
+nodes/fragment/7/output_ports = "0,0,noise;"
+nodes/fragment/7/expression = "noise = seamless_noise(UV, scale);"
+nodes/fragment/8/node = SubResource("VisualShaderNodeColorParameter_cpnmk")
+nodes/fragment/8/position = Vector2(-120, -140)
+nodes/fragment/connections = PackedInt32Array(3, 0, 0, 19, 4, 0, 5, 1, 5, 0, 2, 0, 4, 0, 7, 0, 7, 0, 0, 1, 8, 0, 0, 0)

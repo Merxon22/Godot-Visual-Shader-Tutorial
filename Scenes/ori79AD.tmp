@@ -1,0 +1,23 @@
+[gd_scene load_steps=5 format=3 uid="uid://c5qybhpjdvqnv"]
+
+[ext_resource type="Shader" uid="uid://d1kkxyckh2eis" path="res://Shaders/dissolve.tres" id="1_qcgu1"]
+[ext_resource type="Script" path="res://Scripts/script.gd" id="2_0ftqk"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_y6cj7"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vshc5"]
+render_priority = 0
+shader = ExtResource("1_qcgu1")
+shader_parameter/albedo = Color(0.566333, 0.701848, 0.880244, 1)
+shader_parameter/scale = 10.0
+shader_parameter/dissolve = 0.0
+
+[node name="Node3D" type="Node3D"]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("SphereMesh_y6cj7")
+surface_material_override/0 = SubResource("ShaderMaterial_vshc5")
+script = ExtResource("2_0ftqk")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
